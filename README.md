@@ -1,4 +1,8 @@
-# CT5 Wallpaper Packager
+# Cadillac-Wallpaper-Pack-Generator
+
+可便捷生成凯迪拉克 CT5、CT6、XT5 等大连屏壁纸包的软件。
+
+## CT5 Wallpaper Packager
 
 ## Light/Dark image sources
 
