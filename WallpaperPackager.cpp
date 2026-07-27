@@ -339,12 +339,15 @@ QImage darkenWallpaper(const QImage &image)
 QImage clearRightSide(const QImage &image, int keepWidth)
 {
     QImage output = image.convertToFormat(QImage::Format_ARGB32);
-    QPainter painter(&output);
-    painter.setCompositionMode(QPainter::CompositionMode_Source);
     const int clearX = qBound(0, keepWidth, output.width());
     if (clearX < output.width()) {
-        painter.fillRect(QRect(clearX, 0, output.width() - clearX, output.height()),
-                         QColor(0, 0, 0, 0));
+        for (int y = 0; y < output.height(); ++y) {
+            QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
+            for (int x = clearX; x < output.width(); ++x) {
+                const QRgb pixel = line[x];
+                line[x] = qRgba(qRed(pixel), qGreen(pixel), qBlue(pixel), 0);
+            }
+        }
     }
     return output.convertToFormat(QImage::Format_ARGB32);
 }
@@ -1139,19 +1142,20 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
     auto blurEdgeFade = [](const QImage &image) {
         QImage output = image.convertToFormat(QImage::Format_ARGB32);
-        QPainter painter(&output);
         const int fadeStart = DefaultSharedLeftWidth;
         const int fadeEnd = qMin(output.width(), DefaultSharedLeftWidth + KzbBlurEdgeFadeWidth);
-        painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        QLinearGradient alpha(fadeStart, 0, fadeEnd, 0);
-        alpha.setColorAt(0.0, QColor(255, 255, 255, 255));
-        alpha.setColorAt(0.22, QColor(255, 255, 255, 210));
-        alpha.setColorAt(0.50, QColor(255, 255, 255, 128));
-        alpha.setColorAt(1.0, QColor(255, 255, 255, 0));
-        painter.fillRect(QRect(fadeStart, 0, fadeEnd - fadeStart, output.height()), alpha);
-        if (fadeEnd < output.width()) {
-            painter.fillRect(QRect(fadeEnd, 0, output.width() - fadeEnd, output.height()),
-                             QColor(255, 255, 255, 0));
+
+        for (int y = 0; y < output.height(); ++y) {
+            QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
+            for (int x = fadeStart; x < output.width(); ++x) {
+                const QRgb pixel = line[x];
+                int alpha = 0;
+                if (x < fadeEnd && fadeEnd > fadeStart) {
+                    const qreal t = (x - fadeStart) / static_cast<qreal>(fadeEnd - fadeStart);
+                    alpha = qRound(qAlpha(pixel) * qBound<qreal>(0.0, 1.0 - t, 1.0));
+                }
+                line[x] = qRgba(qRed(pixel), qGreen(pixel), qBlue(pixel), alpha);
+            }
         }
         return output.convertToFormat(QImage::Format_ARGB32);
     };
