@@ -339,15 +339,12 @@ QImage darkenWallpaper(const QImage &image)
 QImage clearRightSide(const QImage &image, int keepWidth)
 {
     QImage output = image.convertToFormat(QImage::Format_ARGB32);
+    QPainter painter(&output);
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
     const int clearX = qBound(0, keepWidth, output.width());
     if (clearX < output.width()) {
-        for (int y = 0; y < output.height(); ++y) {
-            QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
-            for (int x = clearX; x < output.width(); ++x) {
-                const QRgb pixel = line[x];
-                line[x] = qRgba(qRed(pixel), qGreen(pixel), qBlue(pixel), 0);
-            }
-        }
+        painter.fillRect(QRect(clearX, 0, output.width() - clearX, output.height()),
+                         QColor(0, 0, 0, 0));
     }
     return output.convertToFormat(QImage::Format_ARGB32);
 }
