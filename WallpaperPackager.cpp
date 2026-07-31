@@ -1139,8 +1139,8 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
     auto blurEdgeFade = [](const QImage &image) {
         QImage output = image.convertToFormat(QImage::Format_ARGB32);
-        const int fadeStart = DefaultSharedLeftWidth;
-        const int fadeEnd = qMin(output.width(), DefaultSharedLeftWidth + KzbBlurEdgeFadeWidth);
+        const int fadeStart = qBound(0, DefaultSharedLeftWidth, output.width());
+        const int fadeEnd = qMin(output.width(), fadeStart + KzbBlurEdgeFadeWidth);
 
         for (int y = 0; y < output.height(); ++y) {
             QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
@@ -1225,7 +1225,8 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
             int replaceWidth = DefaultSharedLeftWidth;
             if (blurEntry) {
                 leftVisible = darkEntry ? &darkBlurVisible : &lightBlurVisible;
-                replaceWidth = DefaultSharedLeftWidth + KzbBlurEdgeFadeWidth;
+                replaceWidth = qMin(KzbDecodedWidth,
+                                    DefaultSharedLeftWidth + KzbBlurEdgeFadeWidth);
             } else if (dicEntry) {
                 leftVisible = darkEntry ? &darkDicVisible : &lightDicVisible;
             }
