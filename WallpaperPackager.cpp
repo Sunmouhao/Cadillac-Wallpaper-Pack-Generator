@@ -1139,8 +1139,8 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
     auto blurEdgeFade = [](const QImage &image) {
         QImage output = image.convertToFormat(QImage::Format_ARGB32);
-        const int fadeStart = qBound(0, DefaultSharedLeftWidth, output.width());
-        const int fadeEnd = qMin(output.width(), fadeStart + KzbBlurEdgeFadeWidth);
+        const int fadeStart = qMax(0, DefaultSharedLeftWidth - KzbBlurEdgeFadeWidth);
+        const int fadeEnd = qMin(output.width(), DefaultSharedLeftWidth);
 
         for (int y = 0; y < output.height(); ++y) {
             QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
@@ -1167,7 +1167,7 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
 
     const QImage darkVisible = hasExplicitDarkSource ? rawDarkVisible : darken(lightVisible);
-    // KZB 069/072 keep the left image sharp, then crop a generated fade band at the right edge.
+    // KZB 069/072 fade out before the split; the original right-side overlap stays untouched.
     const QImage lightBlurVisible = blurEdgeFade(lightVisible);
     const QImage darkBlurVisible = blurEdgeFade(darkVisible);
     const QImage lightDicVisible = clearRightSide(lightVisible, DefaultSharedLeftWidth);
@@ -1225,8 +1225,6 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
             int replaceWidth = DefaultSharedLeftWidth;
             if (blurEntry) {
                 leftVisible = darkEntry ? &darkBlurVisible : &lightBlurVisible;
-                replaceWidth = qMin(KzbDecodedWidth,
-                                    DefaultSharedLeftWidth + KzbBlurEdgeFadeWidth);
             } else if (dicEntry) {
                 leftVisible = darkEntry ? &darkDicVisible : &lightDicVisible;
             }
