@@ -1172,9 +1172,12 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     const QImage darkBlurVisible = blurEdgeFade(darkVisible);
     const QImage lightDicVisible = clearRightSide(lightVisible, DefaultSharedLeftWidth);
     const QImage darkDicVisible = clearRightSide(darkVisible, DefaultSharedLeftWidth);
+    // Full KZB textures are visible below the map. The right wallpaper belongs to the VCD layer.
+    const QImage lightFullVisible = clearRightSide(lightVisible, DefaultSharedLeftWidth);
+    const QImage darkFullVisible = clearRightSide(darkVisible, DefaultSharedLeftWidth);
 
-    const QImage light = storageImage(lightVisible);
-    const QImage dark = storageImage(darkVisible);
+    const QImage light = storageImage(lightFullVisible);
+    const QImage dark = storageImage(darkFullVisible);
 
     QByteArray lightPayload;
     QByteArray darkPayload;
@@ -1208,14 +1211,14 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
         }
 
         const QString entryPath = entry.path.toLower();
-        const bool darkIndex = i >= 69 && i <= 71;
-        const bool lightIndex = i >= 72 && i <= 74;
-        const bool darkEntry = darkIndex
-                || (!lightIndex && entryPath.contains(QStringLiteral("dark")));
+        const bool knownDarkEntry = entry.id >= 69 && entry.id <= 71;
+        const bool knownLightEntry = entry.id >= 72 && entry.id <= 74;
+        const bool darkEntry = knownDarkEntry
+                || (!knownLightEntry && entryPath.contains(QStringLiteral("dark")));
         const bool blurEntry = entryPath.contains(QStringLiteral("blur"))
-                || i == 69 || i == 72 || entry.id == 69 || entry.id == 72;
+                || entry.id == 69 || entry.id == 72;
         const bool dicEntry = entryPath.contains(QStringLiteral("dic"))
-                || i == 70 || i == 73 || entry.id == 70 || entry.id == 73;
+                || entry.id == 70 || entry.id == 73;
         const bool halfEntry = blurEntry || dicEntry;
 
         QByteArray entryPayload;
