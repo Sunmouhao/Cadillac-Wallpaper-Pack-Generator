@@ -30,7 +30,8 @@ const int KzbAstcPayloadSize = 2956800;
 const int KzbTextureEntrySize = KzbImageHeaderSize + KzbAstcPayloadSize + KzbImageFooterSize;
 const int KzbDecodedWidth = 8960;
 const int KzbDecodedHeight = 1320;
-const int KzbBlurEdgeFadeWidth = 390;
+// Matches the decoded reference blur texture: x=5010 remains opaque and fades to zero at x=5284.
+const int KzbBlurEdgeFadeWidth = 274;
 const int DarkWallpaperOverlayAlpha = 80;
 
 bool isJpegFile(const QString &path)
@@ -1139,8 +1140,8 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
     auto blurEdgeFade = [](const QImage &image) {
         QImage output = image.convertToFormat(QImage::Format_ARGB32);
-        const int fadeStart = qMax(0, DefaultSharedLeftWidth - KzbBlurEdgeFadeWidth);
-        const int fadeEnd = qMin(output.width(), DefaultSharedLeftWidth);
+        const int fadeStart = qBound(0, DefaultSharedLeftWidth, output.width());
+        const int fadeEnd = qMin(output.width(), fadeStart + KzbBlurEdgeFadeWidth);
 
         for (int y = 0; y < output.height(); ++y) {
             QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
@@ -1168,7 +1169,7 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
 
     const QImage darkVisible = hasExplicitDarkSource ? rawDarkVisible : darken(lightVisible);
-    // KZB 069/072 fade out inside the left screen; the right side is transparent.
+    // KZB 069/072 use the reference right-edge fade; 070/073 clear at the screen split.
     const QImage lightBlurVisible = blurEdgeFade(lightVisible);
     const QImage darkBlurVisible = blurEdgeFade(darkVisible);
     const QImage lightDicVisible = clearRightSide(lightVisible, DefaultSharedLeftWidth);
@@ -1229,6 +1230,7 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
                 replaceWidth = KzbDecodedWidth;
             } else if (dicEntry) {
                 leftVisible = darkEntry ? &darkDicVisible : &lightDicVisible;
+                replaceWidth = KzbDecodedWidth;
             }
 
             reportProgress(progress, 98, QStringLiteral("ASTC 8x8 encode KZB entry %1").arg(entry.id));
