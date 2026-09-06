@@ -1145,12 +1145,13 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
         for (int y = 0; y < output.height(); ++y) {
             QRgb *line = reinterpret_cast<QRgb *>(output.scanLine(y));
             for (int x = fadeStart; x < output.width(); ++x) {
-                const QRgb pixel = line[x];
-                int alpha = 0;
-                if (x < fadeEnd && fadeEnd > fadeStart) {
-                    const qreal t = (x - fadeStart) / static_cast<qreal>(fadeEnd - fadeStart);
-                    alpha = qRound(qAlpha(pixel) * qBound<qreal>(0.0, 1.0 - t, 1.0));
+                if (x >= fadeEnd) {
+                    line[x] = qRgba(0, 0, 0, 0);
+                    continue;
                 }
+                const QRgb pixel = line[x];
+                const qreal t = (x - fadeStart) / static_cast<qreal>(fadeEnd - fadeStart);
+                const int alpha = qRound(qAlpha(pixel) * qBound<qreal>(0.0, 1.0 - t, 1.0));
                 line[x] = qRgba(qRed(pixel), qGreen(pixel), qBlue(pixel), alpha);
             }
         }
@@ -1167,7 +1168,7 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
 
     const QImage darkVisible = hasExplicitDarkSource ? rawDarkVisible : darken(lightVisible);
-    // KZB 069/072 fade out before the split; the original right-side overlap stays untouched.
+    // KZB 069/072 fade out inside the left screen; the right side is transparent.
     const QImage lightBlurVisible = blurEdgeFade(lightVisible);
     const QImage darkBlurVisible = blurEdgeFade(darkVisible);
     const QImage lightDicVisible = clearRightSide(lightVisible, DefaultSharedLeftWidth);
@@ -1225,6 +1226,7 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
             int replaceWidth = DefaultSharedLeftWidth;
             if (blurEntry) {
                 leftVisible = darkEntry ? &darkBlurVisible : &lightBlurVisible;
+                replaceWidth = KzbDecodedWidth;
             } else if (dicEntry) {
                 leftVisible = darkEntry ? &darkDicVisible : &lightDicVisible;
             }
