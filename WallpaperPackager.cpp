@@ -1167,7 +1167,7 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
     };
 
     const QImage darkVisible = hasExplicitDarkSource ? rawDarkVisible : darken(lightVisible);
-    // KZB 069/072 fade out before the split and leave the whole right side transparent.
+    // KZB 069/072 fade out before the split; the original right-side overlap stays untouched.
     const QImage lightBlurVisible = blurEdgeFade(lightVisible);
     const QImage darkBlurVisible = blurEdgeFade(darkVisible);
     const QImage lightDicVisible = clearRightSide(lightVisible, DefaultSharedLeftWidth);
@@ -1208,14 +1208,9 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
         }
 
         const QString entryPath = entry.path.toLower();
-        const bool darkIndex = i >= 69 && i <= 71;
-        const bool lightIndex = i >= 72 && i <= 74;
-        const bool darkEntry = darkIndex
-                || (!lightIndex && entryPath.contains(QStringLiteral("dark")));
-        const bool blurEntry = entryPath.contains(QStringLiteral("blur"))
-                || i == 69 || i == 72 || entry.id == 69 || entry.id == 72;
-        const bool dicEntry = entryPath.contains(QStringLiteral("dic"))
-                || i == 70 || i == 73 || entry.id == 70 || entry.id == 73;
+        const bool darkEntry = entryPath.contains(QStringLiteral("dark"));
+        const bool blurEntry = entryPath.contains(QStringLiteral("blur")) || entry.id == 69 || entry.id == 72;
+        const bool dicEntry = entryPath.contains(QStringLiteral("dic")) || entry.id == 70 || entry.id == 73;
         const bool halfEntry = blurEntry || dicEntry;
 
         QByteArray entryPayload;
@@ -1230,11 +1225,8 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
             int replaceWidth = DefaultSharedLeftWidth;
             if (blurEntry) {
                 leftVisible = darkEntry ? &darkBlurVisible : &lightBlurVisible;
-                replaceWidth = KzbDecodedWidth;
             } else if (dicEntry) {
                 leftVisible = darkEntry ? &darkDicVisible : &lightDicVisible;
-                // Dic entries must clear the whole right side rather than retaining a prior package image.
-                replaceWidth = KzbDecodedWidth;
             }
 
             reportProgress(progress, 98, QStringLiteral("ASTC 8x8 encode KZB entry %1").arg(entry.id));
