@@ -30,8 +30,8 @@ const int KzbAstcPayloadSize = 2956800;
 const int KzbTextureEntrySize = KzbImageHeaderSize + KzbAstcPayloadSize + KzbImageFooterSize;
 const int KzbDecodedWidth = 8960;
 const int KzbDecodedHeight = 1320;
-// Matches the decoded reference blur texture: x=5010 remains opaque and fades to zero at x=5284.
-const int KzbBlurEdgeFadeWidth = 274;
+// Blur entries stay opaque at x=5010 and fade to transparent at x=5200.
+const int KzbBlurEdgeFadeWidth = 190;
 const int DarkWallpaperOverlayAlpha = 80;
 
 bool isJpegFile(const QString &path)
