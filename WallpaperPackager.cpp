@@ -1153,11 +1153,14 @@ bool WallpaperPackager::writeLeftKzbImages(const QString &targetInnerPath, const
                 const QRgb pixel = line[x];
                 const qreal t = (x - fadeStart) / static_cast<qreal>(fadeEnd - fadeStart);
                 const qreal remaining = 1.0 - t;
-                // The inverse-ratio curve has a zero slope at both edges, avoiding an ASTC seam.
+                // Store premultiplied color and alpha. The KZB compositor expects both channels to fade.
                 const qreal fade = (remaining * remaining)
                         / (remaining * remaining + t * t);
                 const int alpha = qRound(qAlpha(pixel) * fade);
-                line[x] = qRgba(qRed(pixel), qGreen(pixel), qBlue(pixel), alpha);
+                line[x] = qRgba(qRound(qRed(pixel) * fade),
+                                qRound(qGreen(pixel) * fade),
+                                qRound(qBlue(pixel) * fade),
+                                alpha);
             }
         }
         return output.convertToFormat(QImage::Format_ARGB32);
