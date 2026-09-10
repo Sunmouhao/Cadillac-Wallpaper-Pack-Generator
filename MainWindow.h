@@ -21,25 +21,19 @@ private:
     void chooseImage();
     void chooseDarkImage();
     void chooseLeftImage();
-    void chooseTemplate();
     void chooseLeftKzbSource();
     void chooseOutput();
     void buildPackage();
     void unpackKzbPackage();
     void setBusy(bool busy);
     void setProgress(int value, const QString &text);
-    void updateTemplateShapes();
     void updateCropPreview();
     void appendLog(const QString &text);
-    QString currentTemplatePackagePath() const;
-    QSize readTemplateImageSize(const QString &relativePath, const QSize &fallback) const;
-    QString defaultTemplatePath() const;
     QString defaultOutputPath() const;
 
     QLineEdit *imageEdit = nullptr;
     QLineEdit *darkImageEdit = nullptr;
     QLineEdit *leftImageEdit = nullptr;
-    QLineEdit *templateEdit = nullptr;
     QLineEdit *leftKzbSourceEdit = nullptr;
     QLineEdit *outputEdit = nullptr;
     QLineEdit *packageIdEdit = nullptr;

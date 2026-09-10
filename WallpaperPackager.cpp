@@ -40,17 +40,6 @@ bool isJpegFile(const QString &path)
     return suffix == "jpg" || suffix == "jpeg";
 }
 
-bool hasCadiWallpaperChild(const QDir &dir)
-{
-    const QFileInfoList children = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
-    for (const QFileInfo &child : children) {
-        if (child.fileName().startsWith("cadi_wallpaper", Qt::CaseInsensitive)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 QString firstCadiWallpaperChild(const QString &packagePath, const QString &fallback)
 {
     const QDir packageDir(packagePath);
@@ -557,6 +546,25 @@ QString astcencPath()
 
     return QString();
 }
+
+QString builtInTemplatePackagePath()
+{
+    const QString packageId = QStringLiteral("BFA3A0F4596C4C57A6BCDC1EB3348932");
+    const QString kzbRelativePath = QStringLiteral(
+                "cadi_wallpaper05111930/ipd/wallpaper/cadi_wallpaper_football0c2enliifml.kzb");
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList candidates = {
+        QDir(appDir).filePath(QStringLiteral("template/") + packageId),
+        QDir::cleanPath(QDir(appDir).filePath(QStringLiteral("../../resources/base_template/") + packageId))
+    };
+
+    for (const QString &candidate : candidates) {
+        if (QFileInfo(QDir(candidate).filePath(kzbRelativePath)).isFile()) {
+            return candidate;
+        }
+    }
+    return QString();
+}
 }
 
 QString WallpaperPackager::defaultPackageId()
@@ -684,7 +692,7 @@ WallpaperPackager::Result WallpaperPackager::buildFromImage(const Request &reque
 
     const QString imagePath = QDir::toNativeSeparators(request.imagePath.trimmed());
     const QString darkImagePath = QDir::toNativeSeparators(request.darkImagePath.trimmed());
-    const QString templatePath = normalizeTemplatePackagePath(request.templatePackagePath.trimmed(), request.packageId);
+    const QString templatePath = builtInTemplatePackagePath();
     const QString targetPath = outputPackagePath(request.outputRootPath.trimmed(), request.packageId);
 
     if (imagePath.isEmpty() || !QFileInfo::exists(imagePath)) {
@@ -696,7 +704,7 @@ WallpaperPackager::Result WallpaperPackager::buildFromImage(const Request &reque
         return result;
     }
     if (templatePath.isEmpty() || !QFileInfo(templatePath).isDir()) {
-        result.message = QStringLiteral("请选择完整的模板壁纸包目录");
+        result.message = QStringLiteral("未找到内置基础模板，请确认 template 目录与程序位于同一目录");
         return result;
     }
     if (request.outputRootPath.trimmed().isEmpty()) {
@@ -773,7 +781,7 @@ WallpaperPackager::Result WallpaperPackager::buildFromImage(const Request &reque
     }
 
     QString error;
-    reportProgress(progress, 32, QStringLiteral("复制模板包并保留左半屏 kzb 资源"));
+    reportProgress(progress, 32, QStringLiteral("复制内置基础资源"));
     if (!copyDirectory(templatePath, targetPath, &error)) {
         result.message = error;
         return result;
@@ -817,33 +825,6 @@ WallpaperPackager::Result WallpaperPackager::buildFromImage(const Request &reque
     result.message = QStringLiteral("壁纸包制作完成，写入 %1 个 PNG").arg(written);
     reportProgress(progress, 100, result.message);
     return result;
-}
-
-QString WallpaperPackager::normalizeTemplatePackagePath(const QString &path, const QString &packageId)
-{
-    if (path.isEmpty()) {
-        return QString();
-    }
-    QFileInfo info(path);
-    if (!info.isDir()) {
-        return QString();
-    }
-
-    QDir dir(info.absoluteFilePath());
-    if (info.fileName().compare(packageId, Qt::CaseInsensitive) == 0 || hasCadiWallpaperChild(dir)) {
-        return dir.absolutePath();
-    }
-
-    const QString packageChild = dir.filePath(packageId);
-    if (QFileInfo(packageChild).isDir()) {
-        return QFileInfo(packageChild).absoluteFilePath();
-    }
-
-    if (info.fileName().startsWith("cadi_wallpaper", Qt::CaseInsensitive)) {
-        return info.dir().absolutePath();
-    }
-
-    return dir.absolutePath();
 }
 
 QString WallpaperPackager::outputPackagePath(const QString &outputRootPath, const QString &packageId)
@@ -976,20 +957,18 @@ bool WallpaperPackager::writeThemeImages(const QString &innerPath, const QImage 
     }
 
     const QString screenSaverPath = QDir(innerPath).filePath("rid/screenSaver");
-    if (QDir(screenSaverPath).exists()) {
-        const QImage saver = centerCrop(lightSource, screenSaverWidth, screenSaverHeight, false,
-                                        screenSaverFocusX, screenSaverFocusY, screenSaverZoom);
-        const QImage rawDarkSaver = centerCrop(darkSource, screenSaverWidth, screenSaverHeight, false,
-                                               darkScreenSaverFocusX, darkScreenSaverFocusY, darkScreenSaverZoom);
-        const QImage darkSaver = hasExplicitDarkSource ? rawDarkSaver : darkenWallpaper(rawDarkSaver);
-        reportProgress(progress, 92, QStringLiteral("写入屏保 light_screenSaver_rid.png"));
-        if (!writePng(QDir(screenSaverPath).filePath("light_screenSaver_rid.png"), saver, written, error)) {
-            return false;
-        }
-        reportProgress(progress, 96, QStringLiteral("写入屏保 dark_screenSaver_rid.png"));
-        if (!writePng(QDir(screenSaverPath).filePath("dark_screenSaver_rid.png"), darkSaver, written, error)) {
-            return false;
-        }
+    const QImage saver = centerCrop(lightSource, screenSaverWidth, screenSaverHeight, false,
+                                    screenSaverFocusX, screenSaverFocusY, screenSaverZoom);
+    const QImage rawDarkSaver = centerCrop(darkSource, screenSaverWidth, screenSaverHeight, false,
+                                           darkScreenSaverFocusX, darkScreenSaverFocusY, darkScreenSaverZoom);
+    const QImage darkSaver = hasExplicitDarkSource ? rawDarkSaver : darkenWallpaper(rawDarkSaver);
+    reportProgress(progress, 92, QStringLiteral("写入屏保 light_screenSaver_rid.png"));
+    if (!writePng(QDir(screenSaverPath).filePath("light_screenSaver_rid.png"), saver, written, error)) {
+        return false;
+    }
+    reportProgress(progress, 96, QStringLiteral("写入屏保 dark_screenSaver_rid.png"));
+    if (!writePng(QDir(screenSaverPath).filePath("dark_screenSaver_rid.png"), darkSaver, written, error)) {
+        return false;
     }
 
     return true;

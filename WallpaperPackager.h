@@ -12,7 +12,6 @@ public:
     struct Request {
         QString imagePath;
         QString darkImagePath;
-        QString templatePackagePath;
         QString leftImagePath;
         QString outputRootPath;
         QString packageId;
@@ -76,7 +75,6 @@ public:
                                      const ProgressCallback &progress = ProgressCallback());
 
 private:
-    static QString normalizeTemplatePackagePath(const QString &path, const QString &packageId);
     static QString outputPackagePath(const QString &outputRootPath, const QString &packageId);
     static bool copyDirectory(const QString &sourcePath, const QString &targetPath, QString *error);
     static bool writeThemeImages(const QString &innerPath, const QImage &lightSource,

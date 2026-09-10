@@ -15,7 +15,6 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QMetaObject>
-#include <QImageReader>
 #include <QPointer>
 #include <QProgressBar>
 #include <QPushButton>
@@ -65,15 +64,6 @@ MainWindow::MainWindow(QWidget *parent)
     auto *darkImageButton = new QPushButton(QStringLiteral("选择图片"), darkImageRow);
     darkImageLayout->addWidget(darkImageButton);
     form->addRow(QStringLiteral("深色模式 JPG/JPEG 图片"), darkImageRow);
-
-    templateEdit = new QLineEdit(defaultTemplatePath(), central);
-    auto *templateRow = new QWidget(central);
-    auto *templateLayout = new QHBoxLayout(templateRow);
-    templateLayout->setContentsMargins(0, 0, 0, 0);
-    templateLayout->addWidget(templateEdit, 1);
-    auto *templateButton = new QPushButton(QStringLiteral("选择模板包"), templateRow);
-    templateLayout->addWidget(templateButton);
-    form->addRow(QStringLiteral("模板壁纸包"), templateRow);
 
     leftKzbSourceEdit = new QLineEdit(central);
     leftKzbSourceEdit->setPlaceholderText(QStringLiteral("可选：已有主题包或 .kzb，用于替换左半屏 KZB 图像"));
@@ -182,7 +172,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(imageButton, &QPushButton::clicked, this, &MainWindow::chooseImage);
     connect(darkImageButton, &QPushButton::clicked, this, &MainWindow::chooseDarkImage);
-    connect(templateButton, &QPushButton::clicked, this, &MainWindow::chooseTemplate);
     connect(leftKzbPackageButton, &QPushButton::clicked, this, &MainWindow::chooseLeftImage);
     connect(leftKzbFileButton, &QPushButton::clicked, this, [this]() {
         const QString path = QFileDialog::getOpenFileName(
@@ -200,13 +189,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(imageEdit, &QLineEdit::textChanged, this, &MainWindow::updateCropPreview);
     connect(darkImageEdit, &QLineEdit::textChanged, this, &MainWindow::updateCropPreview);
     connect(leftKzbSourceEdit, &QLineEdit::textChanged, this, &MainWindow::updateCropPreview);
-    connect(templateEdit, &QLineEdit::textChanged, this, &MainWindow::updateTemplateShapes);
-    connect(packageIdEdit, &QLineEdit::textChanged, this, &MainWindow::updateTemplateShapes);
-
-    appendLog(QStringLiteral("模板包必须是完整的 BFA3A0F4596C4C57A6BCDC1EB3348932 目录。"));
+    appendLog(QStringLiteral("使用内置基础模板。"));
     appendLog(QStringLiteral("vcd 文件夹是深色/浅色右半屏壁纸，左半屏壁纸在 .kzb 资源包内。"));
     appendLog(QStringLiteral("当前工具会生成右半屏 PNG，并尝试把左半屏图片编码写入 .kzb。"));
-    updateTemplateShapes();
     updateCropPreview();
 }
 
@@ -246,18 +231,6 @@ void MainWindow::chooseLeftImage()
     }
 }
 
-void MainWindow::chooseTemplate()
-{
-    const QString path = QFileDialog::getExistingDirectory(
-                this,
-                QStringLiteral("选择完整模板壁纸包目录"),
-                templateEdit->text().isEmpty() ? QStringLiteral("E:/paper") : templateEdit->text());
-    if (!path.isEmpty()) {
-        templateEdit->setText(QDir::toNativeSeparators(path));
-        updateTemplateShapes();
-    }
-}
-
 void MainWindow::chooseLeftKzbSource()
 {
     const QString path = QFileDialog::getExistingDirectory(
@@ -289,7 +262,6 @@ void MainWindow::buildPackage()
     WallpaperPackager::Request request;
     request.imagePath = imageEdit->text();
     request.darkImagePath = darkImageEdit->text();
-    request.templatePackagePath = templateEdit->text();
     request.leftImagePath.clear();
     request.outputRootPath = outputEdit->text();
     request.packageId = packageIdEdit->text().trimmed().isEmpty()
@@ -469,7 +441,6 @@ void MainWindow::setBusy(bool busy)
     unpackKzbButton->setEnabled(!busy);
     imageEdit->setEnabled(!busy);
     darkImageEdit->setEnabled(!busy);
-    templateEdit->setEnabled(!busy);
     leftKzbSourceEdit->setEnabled(!busy);
     outputEdit->setEnabled(!busy);
     packageIdEdit->setEnabled(!busy);
@@ -490,49 +461,6 @@ void MainWindow::setProgress(int value, const QString &text)
     progressBar->setFormat(QStringLiteral("%1%  %2").arg(value).arg(text));
     if (!text.isEmpty()) {
         appendLog(text);
-    }
-}
-
-void MainWindow::updateTemplateShapes()
-{
-    const QSize oldMain = mainTargetSize;
-    const QSize oldPreview = previewTargetSize;
-    const QSize oldSaver = screenSaverTargetSize;
-
-    mainTargetSize = readTemplateImageSize(
-                QStringLiteral("vcd/wallpaper/light_wallpaper_vcd.png"),
-                QSize(3950, 1320));
-    previewTargetSize = readTemplateImageSize(
-                QStringLiteral("light_preview_image.png"),
-                QSize(2198, 367));
-    screenSaverTargetSize = readTemplateImageSize(
-                QStringLiteral("rid/screenSaver/light_screenSaver_rid.png"),
-                QSize(1920, 1080));
-
-    mainCropPreview->setTarget(QStringLiteral("右半屏壁纸"), mainTargetSize.width(), mainTargetSize.height());
-    leftCropPreview->setTarget(QStringLiteral("左右半屏整图"), 8960, 1320);
-    leftCropPreview->setVerticalDividerPercent(5010.0 * 100.0 / 8960.0);
-    previewCropPreview->setTarget(QStringLiteral("预览图"), previewTargetSize.width(), previewTargetSize.height());
-    screenSaverCropPreview->setTarget(QStringLiteral("屏保"),
-                                      screenSaverTargetSize.width(),
-                                      screenSaverTargetSize.height());
-
-    darkCropPreview->setTarget(QStringLiteral("深色左右半屏整图"), 8960, 1320);
-    darkCropPreview->setVerticalDividerPercent(5010.0 * 100.0 / 8960.0);
-    darkPreviewCropPreview->setTarget(QStringLiteral("深色预览图"),
-                                      previewTargetSize.width(),
-                                      previewTargetSize.height());
-    darkScreenSaverCropPreview->setTarget(QStringLiteral("深色屏保"),
-                                          screenSaverTargetSize.width(),
-                                          screenSaverTargetSize.height());
-
-    if (logEdit && (mainTargetSize != oldMain
-                    || previewTargetSize != oldPreview
-                    || screenSaverTargetSize != oldSaver)) {
-        appendLog(QStringLiteral("已读取模板形状: 右半屏壁纸 %1x%2，预览图 %3x%4，屏保 %5x%6")
-                  .arg(mainTargetSize.width()).arg(mainTargetSize.height())
-                  .arg(previewTargetSize.width()).arg(previewTargetSize.height())
-                  .arg(screenSaverTargetSize.width()).arg(screenSaverTargetSize.height()));
     }
 }
 
@@ -565,60 +493,10 @@ void MainWindow::updateCropPreview()
     }
 }
 
-QString MainWindow::currentTemplatePackagePath() const
-{
-    const QString packageId = packageIdEdit->text().trimmed().isEmpty()
-            ? WallpaperPackager::defaultPackageId()
-            : packageIdEdit->text().trimmed();
-    QFileInfo info(templateEdit->text().trimmed());
-    if (!info.exists() || !info.isDir()) {
-        return QString();
-    }
-    if (info.fileName().compare(packageId, Qt::CaseInsensitive) == 0) {
-        return info.absoluteFilePath();
-    }
-    if (info.fileName().startsWith("cadi_wallpaper", Qt::CaseInsensitive)) {
-        return info.dir().absolutePath();
-    }
-    const QString child = QDir(info.absoluteFilePath()).filePath(packageId);
-    if (QFileInfo(child).isDir()) {
-        return QFileInfo(child).absoluteFilePath();
-    }
-    return info.absoluteFilePath();
-}
-
-QSize MainWindow::readTemplateImageSize(const QString &relativePath, const QSize &fallback) const
-{
-    const QString packagePath = currentTemplatePackagePath();
-    if (packagePath.isEmpty()) {
-        return fallback;
-    }
-
-    QDir packageDir(packagePath);
-    const QFileInfoList children = packageDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-    for (const QFileInfo &child : children) {
-        if (!child.fileName().startsWith("cadi_wallpaper", Qt::CaseInsensitive)) {
-            continue;
-        }
-        QImageReader reader(QDir(child.absoluteFilePath()).filePath(relativePath));
-        const QSize size = reader.size();
-        if (size.isValid()) {
-            return size;
-        }
-    }
-    return fallback;
-}
-
 void MainWindow::appendLog(const QString &text)
 {
     logEdit->append(QStringLiteral("[%1] %2")
                     .arg(QDateTime::currentDateTime().toString("HH:mm:ss"), text));
-}
-
-QString MainWindow::defaultTemplatePath() const
-{
-    const QString path = QStringLiteral("E:/paper/") + WallpaperPackager::defaultPackageId();
-    return QDir::toNativeSeparators(path);
 }
 
 QString MainWindow::defaultOutputPath() const
